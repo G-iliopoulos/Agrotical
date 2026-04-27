@@ -1,1 +1,1 @@
-/* Commit 7 — see FarmerFields.tsx */
+/* Commit 7 */

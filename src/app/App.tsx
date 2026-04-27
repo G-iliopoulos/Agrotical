@@ -1,1 +1,1 @@
-/* Commit 1 — see App.tsx */
+/* Commit 1 */

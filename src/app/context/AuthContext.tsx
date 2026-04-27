@@ -1,1 +1,1 @@
-/* Commit 1 — see AuthContext.tsx */
+/* Commit 1 */
