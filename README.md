@@ -1,7 +1,7 @@
 # Agrotical — Commit 1
 ## init: project setup, routing & AuthContext
 
-**Ημερομηνία:** 15 Ιανουαρίου 2026
+**Ημερομηνία:** 15 Απριλίου 2026
 **Hash:** a1f3c2e
 
 ### Αρχεία αυτού του commit:
