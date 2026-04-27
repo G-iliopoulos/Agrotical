@@ -1,20 +1,23 @@
-# Agrotical — Commit 1
-## init: project setup, routing & AuthContext
+# Agrotical — Commit 2
+## data: add types & crop types to mockData
 
-**Ημερομηνία:** 15 Απριλίου 2026
-**Hash:** a1f3c2e
+**Ημερομηνία:** 16 Ιανουαρίου 2026
+**Hash:** b2d4f1a
 
-### Αρχεία αυτού του commit:
-- src/app/App.tsx         → Βασική εφαρμογή με RouterProvider + AuthProvider
-- src/app/routes.tsx      → Βασικά routes για Login + 3 dashboards
-- src/app/context/AuthContext.tsx → Authentication context (login/logout/loginAs)
+### Τι προστέθηκε σε αυτό το commit:
+- src/app/data/mockData.ts (ΝΕΟ αρχείο)
 
-### Τεχνολογίες:
-- React 18 + TypeScript
-- React Router v7 (Data Mode)
-- Tailwind CSS v4
+### Περιεχόμενο mockData.ts:
+- TypeScript interfaces: User, CropType, Field, Task, Recommendation, WeatherData, SystemNotification
+- Type aliases: UserRole, CareLevel, FieldStatus, TaskType, RecommendationPriority, RecommendationType
+- 10 τύποι καλλιεργειών (cropTypes[]) με avgYieldPerAcre, avgPricePerKg, avgCostPerAcre
+- Helper function: getCropById()
+
+### Αρχεία από προηγούμενα commits (αμετάβλητα):
+- src/app/App.tsx           (Commit 1)
+- src/app/routes.tsx        (Commit 1)
+- src/app/context/AuthContext.tsx (Commit 1)
 
 ### Σημείωση:
-Αυτό είναι το αρχικό commit. Τα placeholder components (FarmerDashboard,
-AdminDashboard, AgronomistDashboard, Layout, LoginPage) πρέπει να δημιουργηθούν
-στα επόμενα commits.
+Τα users[], fields[], tasks[], recommendations[] και οι financial calculations
+θα προστεθούν στο Commit 3.
