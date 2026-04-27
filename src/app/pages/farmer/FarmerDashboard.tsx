@@ -1,1 +1,1 @@
-/* see commit 6 */
+/* Commit 6 — see FarmerDashboard.tsx */
