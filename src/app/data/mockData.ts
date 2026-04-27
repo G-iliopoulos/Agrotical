@@ -8,99 +8,46 @@ export type RecommendationPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type RecommendationType = 'fertilizer' | 'pesticide' | 'irrigation' | 'harvest' | 'disease' | 'general';
 
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  avatar?: string;
-  phone: string;
-  location: string;
-  joinDate: string;
-  active: boolean;
-  assignedAgronomist?: string;
-  assignedFarmers?: string[];
+  id: string; name: string; email: string; password: string; role: UserRole;
+  avatar?: string; phone: string; location: string; joinDate: string; active: boolean;
+  assignedAgronomist?: string; assignedFarmers?: string[];
 }
 
 export interface CropType {
-  id: string;
-  name: string;
-  nameEn: string;
-  avgYieldPerAcre: number;
-  avgPricePerKg: number;
-  avgCostPerAcre: number;
-  season: string;
-  waterNeeds: 'low' | 'medium' | 'high';
-  growthDays: number;
-  description: string;
-  icon: string;
-  color: string;
+  id: string; name: string; nameEn: string; avgYieldPerAcre: number; avgPricePerKg: number;
+  avgCostPerAcre: number; season: string; waterNeeds: 'low' | 'medium' | 'high';
+  growthDays: number; description: string; icon: string; color: string;
 }
 
 export interface Field {
-  id: string;
-  farmerId: string;
-  name: string;
-  acres: number;
-  cropTypeId: string;
-  careLevel: CareLevel;
-  plantingDate: string;
-  expectedHarvestDate: string;
-  status: FieldStatus;
-  healthScore: number;
-  location: string;
-  notes: string;
-  irrigationType: string;
-  soilType: string;
-  lastInspection?: string;
-  agronomistNotes?: string;
-  imageUrl?: string;
+  id: string; farmerId: string; name: string; acres: number; cropTypeId: string;
+  careLevel: CareLevel; plantingDate: string; expectedHarvestDate: string;
+  status: FieldStatus; healthScore: number; location: string; notes: string;
+  irrigationType: string; soilType: string; lastInspection?: string;
+  agronomistNotes?: string; imageUrl?: string;
 }
 
 export interface Task {
-  id: string;
-  fieldId: string;
-  farmerId: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  completed: boolean;
-  type: TaskType;
-  priority: 'low' | 'medium' | 'high';
+  id: string; fieldId: string; farmerId: string; title: string; description: string;
+  dueDate: string; completed: boolean; type: TaskType; priority: 'low' | 'medium' | 'high';
   estimatedCost?: number;
 }
 
 export interface Recommendation {
-  id: string;
-  agronomistId: string;
-  farmerId: string;
-  fieldId?: string;
-  title: string;
-  content: string;
-  date: string;
+  id: string; agronomistId: string; farmerId: string; fieldId?: string;
+  title: string; content: string; date: string;
   status: 'pending' | 'read' | 'applied' | 'dismissed';
-  priority: RecommendationPriority;
-  type: RecommendationType;
+  priority: RecommendationPriority; type: RecommendationType;
 }
 
 export interface WeatherData {
-  date: string;
-  temp: number;
-  humidity: number;
-  condition: string;
-  icon: string;
-  rainfall: number;
-  windSpeed: number;
+  date: string; temp: number; humidity: number; condition: string;
+  icon: string; rainfall: number; windSpeed: number;
 }
 
 export interface SystemNotification {
-  id: string;
-  userId?: string;
-  title: string;
-  message: string;
-  date: string;
-  read: boolean;
-  type: 'info' | 'warning' | 'success' | 'error';
+  id: string; userId?: string; title: string; message: string;
+  date: string; read: boolean; type: 'info' | 'warning' | 'success' | 'error';
 }
 
 // ─── Crop Types ───────────────────────────────────────────────────────────────
@@ -196,12 +143,12 @@ export const irrigationCostMultiplier: Record<string, number>  = { 'Σταγόν
 export function calculateFieldFinancials(field: Field) {
   const crop = cropTypes.find(c => c.id === field.cropTypeId)!;
   if (!crop) return { estimatedYield: 0, estimatedRevenue: 0, estimatedCosts: 0, estimatedProfit: 0, profitMargin: 0, yieldPerAcre: 0, revenuePerAcre: 0, soilFactor: 1, irrigationFactor: 1 };
-  const careMult     = careLevelMultiplier[field.careLevel];
+  const careMult = careLevelMultiplier[field.careLevel];
   const careCostMult = careLevelCostMultiplier[field.careLevel];
-  const soilYield    = soilYieldMultiplier[field.soilType] ?? 1.0;
-  const soilCost     = soilCostMultiplier[field.soilType] ?? 1.0;
-  const irrigYield   = irrigationYieldMultiplier[field.irrigationType] ?? 0.85;
-  const irrigCost    = irrigationCostMultiplier[field.irrigationType] ?? 0.80;
+  const soilYield = soilYieldMultiplier[field.soilType] ?? 1.0;
+  const soilCost  = soilCostMultiplier[field.soilType] ?? 1.0;
+  const irrigYield = irrigationYieldMultiplier[field.irrigationType] ?? 0.85;
+  const irrigCost  = irrigationCostMultiplier[field.irrigationType] ?? 0.80;
   const estimatedYield   = field.acres * crop.avgYieldPerAcre * careMult * soilYield * irrigYield;
   const estimatedRevenue = estimatedYield * crop.avgPricePerKg;
   const estimatedCosts   = field.acres * crop.avgCostPerAcre * careCostMult * soilCost * irrigCost;
@@ -210,7 +157,8 @@ export function calculateFieldFinancials(field: Field) {
   return {
     estimatedYield: Math.round(estimatedYield), estimatedRevenue: Math.round(estimatedRevenue),
     estimatedCosts: Math.round(estimatedCosts), estimatedProfit: Math.round(estimatedProfit),
-    profitMargin: Math.round(profitMargin), yieldPerAcre: Math.round(field.acres > 0 ? estimatedYield / field.acres : 0),
+    profitMargin: Math.round(profitMargin),
+    yieldPerAcre: Math.round(field.acres > 0 ? estimatedYield / field.acres : 0),
     revenuePerAcre: Math.round(field.acres > 0 ? estimatedRevenue / field.acres : 0),
     soilFactor: Math.round(soilYield * 100), irrigationFactor: Math.round(irrigYield * 100),
   };
