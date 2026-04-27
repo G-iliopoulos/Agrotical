@@ -1,23 +1,22 @@
-# Agrotical — Commit 2
-## data: add types & crop types to mockData
+# Agrotical — Commit 3
+## data: add users, fields, tasks, recommendations & financial calculations
 
-**Ημερομηνία:** 16 Ιανουαρίου 2026
-**Hash:** b2d4f1a
+**Ημερομηνία:** 17 Ιανουαρίου 2026
+**Hash:** c3e5a2b
 
-### Τι προστέθηκε σε αυτό το commit:
-- src/app/data/mockData.ts (ΝΕΟ αρχείο)
+### Τι προστέθηκε σε αυτό το commit (mockData.ts ενημερώθηκε):
+- users[]     → 7 mock users (1 admin, 4 farmers, 2 agronomists)
+- fields[]    → 8 χωράφια με healthScore, irrigationType, soilType, imageUrl
+- tasks[]     → 7 εργασίες με priorities και estimatedCost
+- recommendations[] → 4 συστάσεις (pending/read/applied)
+- weatherData[]     → 7ήμερη πρόγνωση καιρού
+- systemNotifications[] → 3 ειδοποιήσεις συστήματος
+- calculateFieldFinancials() → Υπολογισμός εσόδων/εξόδων/κέρδους
+- getFarmerTotals() → Σύνολα ανά αγρότη
+- getFieldsByFarmer(), getCropById(), getUserById() → Helpers
+- monthlyProductionData, cropDistributionData → Δεδομένα γραφημάτων
 
-### Περιεχόμενο mockData.ts:
-- TypeScript interfaces: User, CropType, Field, Task, Recommendation, WeatherData, SystemNotification
-- Type aliases: UserRole, CareLevel, FieldStatus, TaskType, RecommendationPriority, RecommendationType
-- 10 τύποι καλλιεργειών (cropTypes[]) με avgYieldPerAcre, avgPricePerKg, avgCostPerAcre
-- Helper function: getCropById()
-
-### Αρχεία από προηγούμενα commits (αμετάβλητα):
-- src/app/App.tsx           (Commit 1)
-- src/app/routes.tsx        (Commit 1)
-- src/app/context/AuthContext.tsx (Commit 1)
-
-### Σημείωση:
-Τα users[], fields[], tasks[], recommendations[] και οι financial calculations
-θα προστεθούν στο Commit 3.
+### Αρχεία αμετάβλητα από Commit 1:
+- src/app/App.tsx
+- src/app/routes.tsx
+- src/app/context/AuthContext.tsx
