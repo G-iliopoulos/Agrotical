@@ -43,19 +43,11 @@ export function useAuth() {
 }
 
 export function getRoleLabel(role: UserRole): string {
-  const labels: Record<UserRole, string> = {
-    admin: 'Διαχειριστής',
-    farmer: 'Αγρότης',
-    agronomist: 'Γεωπόνος',
-  };
+  const labels: Record<UserRole, string> = { admin: 'Διαχειριστής', farmer: 'Αγρότης', agronomist: 'Γεωπόνος' };
   return labels[role];
 }
 
 export function getRoleColor(role: UserRole): string {
-  const colors: Record<UserRole, string> = {
-    admin: '#7c3aed',
-    farmer: '#2d6a4f',
-    agronomist: '#0369a1',
-  };
+  const colors: Record<UserRole, string> = { admin: '#7c3aed', farmer: '#2d6a4f', agronomist: '#0369a1' };
   return colors[role];
 }
