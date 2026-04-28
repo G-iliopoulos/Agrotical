@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   fields as allFields, Field, CareLevel, getCropById, cropTypes,
-  calculateFieldFinancials, getFieldsByFarmer,
+  calculateFieldFinancials, getFieldsByFarmer, tasks as allTasks, recommendations as allRecs
 } from '../../data/mockData';
-import { Plus, Search, X, Edit2, Trash2, Eye, Map, TrendingUp, Leaf, Save } from 'lucide-react';
+import {
+  Plus, Search, X, Edit2, Trash2, Eye, Map,
+  TrendingUp, Leaf, Save, AlertTriangle
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 const careLevelLabels: Record<CareLevel, string> = {
-  low: 'Χαμηλή', medium: 'Μέτρια', high: 'Υψηλή',
+  low: 'Χαμηλή', medium: 'Μέτρια', high: 'Υψηλή'
 };
 const careLevelColors: Record<CareLevel, { bg: string; text: string }> = {
   low:    { bg: '#fef3c7', text: '#d97706' },
@@ -40,6 +43,8 @@ export default function FarmerFields() {
   const [form, setForm]                   = useState<Omit<Field, 'id' | 'farmerId' | 'healthScore'>>(emptyField);
   const [viewField, setViewField]         = useState<Field | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteBlockMsg, setDeleteBlockMsg] = useState('');
+  const [formErrors, setFormErrors]       = useState<{ name?: string; acres?: string; dates?: string }>({});
 
   if (!currentUser) return null;
 
@@ -54,6 +59,7 @@ export default function FarmerFields() {
   const openAdd = () => {
     setEditingField(null);
     setForm(emptyField);
+    setFormErrors({});
     setShowModal(true);
   };
 
@@ -61,17 +67,46 @@ export default function FarmerFields() {
     setEditingField(field);
     const { id, farmerId, healthScore, ...rest } = field;
     setForm(rest);
+    setFormErrors({});
     setShowModal(true);
   };
 
-  // UC8 validations έρχονται στο Commit 13 — εδώ απλό save
+  // ── UC8 Validation (Alt Flows 2/3/4) ──────────────────────────────────────
+  const validateForm = (): boolean => {
+    const errors: { name?: string; acres?: string; dates?: string } = {};
+
+    if (!form.name.trim()) {
+      errors.name = 'Το όνομα χωραφιού είναι υποχρεωτικό';
+    } else {
+      // UC8 Alt Flow 3: Duplicate name check
+      const duplicate = localFields.find(f =>
+        f.name.toLowerCase() === form.name.trim().toLowerCase() &&
+        (!editingField || f.id !== editingField.id)
+      );
+      if (duplicate) errors.name = 'Υπάρχει ήδη χωράφι με αυτό το όνομα';
+    }
+
+    // UC8 Alt Flow 2: acres > 0
+    if (!form.acres || form.acres <= 0) {
+      errors.acres = 'Η έκταση πρέπει να είναι μεγαλύτερη από 0';
+    }
+
+    // UC8 Alt Flow 4: Harvest date >= planting date
+    if (form.plantingDate && form.expectedHarvestDate) {
+      if (new Date(form.expectedHarvestDate) < new Date(form.plantingDate)) {
+        errors.dates = 'Η ημερομηνία συγκομιδής δεν μπορεί να προηγείται της ημερομηνίας σποράς';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSave = () => {
-    if (!form.name || !form.acres) return;
+    if (!validateForm()) return;
 
     if (editingField) {
-      setLocalFields(prev =>
-        prev.map(f => f.id === editingField.id ? { ...editingField, ...form } : f)
-      );
+      setLocalFields(prev => prev.map(f => f.id === editingField.id ? { ...editingField, ...form } : f));
       toast.success(`Το χωράφι "${form.name}" ενημερώθηκε επιτυχώς`);
     } else {
       const newField: Field = {
@@ -86,11 +121,25 @@ export default function FarmerFields() {
     setShowModal(false);
   };
 
-  // UC9 block check έρχεται στο Commit 13 — εδώ απλό delete
+  // ── UC9 Alt Flow 4: Block delete if pending tasks or active recs ──────────
+  const handleDeleteRequest = (fieldId: string) => {
+    const pendingTasks = allTasks.filter(t => t.fieldId === fieldId && !t.completed);
+    const activeRecs   = allRecs.filter(r => r.fieldId === fieldId && (r.status === 'pending' || r.status === 'read'));
+
+    if (pendingTasks.length > 0 || activeRecs.length > 0) {
+      setDeleteBlockMsg('Δεν μπορείτε να διαγράψετε το χωράφι όσο υπάρχουν εκκρεμείς εργασίες ή ενεργές συστάσεις');
+    } else {
+      setDeleteBlockMsg('');
+    }
+    setDeleteConfirm(fieldId);
+  };
+
   const handleDelete = (id: string) => {
+    if (deleteBlockMsg) return;
     const field = localFields.find(f => f.id === id);
     setLocalFields(prev => prev.filter(f => f.id !== id));
     setDeleteConfirm(null);
+    setDeleteBlockMsg('');
     toast.success(`Το χωράφι "${field?.name}" διαγράφηκε`);
   };
 
@@ -105,21 +154,19 @@ export default function FarmerFields() {
 
   return (
     <div className="p-6 space-y-5">
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl" style={{ fontWeight: 700, color: '#111827' }}>Τα Χωράφια μου</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {localFields.length} χωράφια · {totals.acres} στρ. συνολικά
-          </p>
+          <p className="text-sm text-gray-500 mt-1">{localFields.length} χωράφια · {totals.acres} στρ. συνολικά</p>
         </div>
         <button
           onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm transition-all hover:shadow-md"
           style={{ background: 'linear-gradient(135deg, #2d6a4f, #40916c)', fontWeight: 600 }}
         >
-          <Plus className="w-4 h-4" /> Προσθήκη Χωραφιού
+          <Plus className="w-4 h-4" />
+          Προσθήκη Χωραφιού
         </button>
       </div>
 
@@ -222,9 +269,7 @@ export default function FarmerFields() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Αναμ. Έσοδα</div>
-                    <div className="text-sm" style={{ fontWeight: 700, color: '#2563eb' }}>
-                      €{fin.estimatedRevenue.toLocaleString('el-GR')}
-                    </div>
+                    <div className="text-sm" style={{ fontWeight: 700, color: '#2563eb' }}>€{fin.estimatedRevenue.toLocaleString('el-GR')}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Εκτ. Κέρδος</div>
@@ -242,11 +287,11 @@ export default function FarmerFields() {
                 </div>
 
                 <div className="text-xs text-gray-500 flex items-center gap-1">
-                  <Map className="w-3 h-3" /> {field.location}
+                  <Map className="w-3 h-3" />
+                  {field.location}
                 </div>
               </div>
 
-              {/* Actions — τώρα και το Λεπτομέρειες είναι ενεργό */}
               <div className="px-4 pb-4 flex gap-2">
                 <button
                   onClick={() => setViewField(field)}
@@ -263,7 +308,7 @@ export default function FarmerFields() {
                   <Edit2 className="w-3.5 h-3.5" /> Επεξεργασία
                 </button>
                 <button
-                  onClick={() => setDeleteConfirm(field.id)}
+                  onClick={() => handleDeleteRequest(field.id)}
                   className="py-2 px-3 rounded-lg text-xs border border-red-200 hover:bg-red-50 transition-colors"
                   style={{ color: '#dc2626' }}
                 >
@@ -306,7 +351,7 @@ export default function FarmerFields() {
         </div>
       )}
 
-      {/* ── Add/Edit Modal (ΝΕΟ στο Commit 12) ── */}
+      {/* Add/Edit Modal με UC8 validations */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
@@ -326,20 +371,26 @@ export default function FarmerFields() {
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Όνομα Χωραφιού *</label>
                   <input
                     value={form.name}
-                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-sm"
+                    onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setFormErrors(p => ({ ...p, name: undefined })); }}
+                    className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 text-sm ${formErrors.name ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
                     placeholder="π.χ. Χωράφι Νταμάρι"
                   />
+                  {formErrors.name && (
+                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{formErrors.name}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Στρέμματα *</label>
                   <input
                     type="number"
                     value={form.acres || ''}
-                    onChange={e => setForm(p => ({ ...p, acres: Number(e.target.value) }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-sm"
+                    onChange={e => { setForm(p => ({ ...p, acres: Number(e.target.value) })); setFormErrors(p => ({ ...p, acres: undefined })); }}
+                    className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 text-sm ${formErrors.acres ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
                     placeholder="0" min="0"
                   />
+                  {formErrors.acres && (
+                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{formErrors.acres}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Είδος Καλλιέργειας</label>
@@ -380,18 +431,23 @@ export default function FarmerFields() {
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Ημ. Σποράς</label>
                   <input
                     type="date" value={form.plantingDate}
-                    onChange={e => setForm(p => ({ ...p, plantingDate: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none text-sm"
+                    onChange={e => { setForm(p => ({ ...p, plantingDate: e.target.value })); setFormErrors(p => ({ ...p, dates: undefined })); }}
+                    className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm ${formErrors.dates ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
                   />
                 </div>
                 <div>
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Αναμ. Συγκομιδή</label>
                   <input
                     type="date" value={form.expectedHarvestDate}
-                    onChange={e => setForm(p => ({ ...p, expectedHarvestDate: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none text-sm"
+                    onChange={e => { setForm(p => ({ ...p, expectedHarvestDate: e.target.value })); setFormErrors(p => ({ ...p, dates: undefined })); }}
+                    className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none text-sm ${formErrors.dates ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}
                   />
                 </div>
+                {formErrors.dates && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-red-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{formErrors.dates}</p>
+                  </div>
+                )}
                 <div className="col-span-2">
                   <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Τοποθεσία</label>
                   <input
@@ -441,7 +497,7 @@ export default function FarmerFields() {
                 </div>
               </div>
 
-              {/* ── Financial Preview (ΝΕΟ στο Commit 12) ── */}
+              {/* Financial Preview */}
               {form.acres > 0 && form.cropTypeId && (
                 <div className="p-4 rounded-xl bg-green-50 border border-green-100">
                   <div className="text-xs mb-3" style={{ color: '#2d6a4f', fontWeight: 600 }}>📊 Εκτίμηση Αποδόσεων</div>
@@ -466,19 +522,13 @@ export default function FarmerFields() {
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-green-200">
                           <div className="flex items-center justify-between bg-white/70 rounded-lg px-2 py-1.5">
                             <span className="text-xs text-gray-500">🌍 Έδαφος</span>
-                            <span className="text-xs" style={{
-                              fontWeight: 600,
-                              color: preview.soilFactor >= 100 ? '#059669' : preview.soilFactor >= 90 ? '#d97706' : '#dc2626',
-                            }}>
+                            <span className="text-xs" style={{ fontWeight: 600, color: preview.soilFactor >= 100 ? '#059669' : preview.soilFactor >= 90 ? '#d97706' : '#dc2626' }}>
                               {preview.soilFactor}% απόδοσης
                             </span>
                           </div>
                           <div className="flex items-center justify-between bg-white/70 rounded-lg px-2 py-1.5">
                             <span className="text-xs text-gray-500">💧 Άρδευση</span>
-                            <span className="text-xs" style={{
-                              fontWeight: 600,
-                              color: preview.irrigationFactor >= 100 ? '#059669' : preview.irrigationFactor >= 85 ? '#d97706' : '#dc2626',
-                            }}>
+                            <span className="text-xs" style={{ fontWeight: 600, color: preview.irrigationFactor >= 100 ? '#059669' : preview.irrigationFactor >= 85 ? '#d97706' : '#dc2626' }}>
                               {preview.irrigationFactor}% απόδοσης
                             </span>
                           </div>
@@ -511,7 +561,7 @@ export default function FarmerFields() {
         </div>
       )}
 
-      {/* ── View Modal / "Λεπτομέρειες" (ΝΕΟ στο Commit 12) ── */}
+      {/* View Modal */}
       {viewField && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setViewField(null)} />
@@ -521,9 +571,7 @@ export default function FarmerFields() {
                 <span className="text-3xl">{getCropById(viewField.cropTypeId)?.icon}</span>
                 <div>
                   <h2 className="text-lg" style={{ fontWeight: 700 }}>{viewField.name}</h2>
-                  <p className="text-sm text-gray-500">
-                    {getCropById(viewField.cropTypeId)?.name} · {viewField.acres} στρ.
-                  </p>
+                  <p className="text-sm text-gray-500">{getCropById(viewField.cropTypeId)?.name} · {viewField.acres} στρ.</p>
                 </div>
               </div>
               <button onClick={() => setViewField(null)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -537,12 +585,12 @@ export default function FarmerFields() {
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: 'Παραγωγή',          value: `${fin.estimatedYield.toLocaleString('el-GR')} kg` },
-                        { label: 'Ανά Στρέμμα',        value: `${fin.yieldPerAcre} kg` },
-                        { label: 'Έσοδα',              value: `€${fin.estimatedRevenue.toLocaleString('el-GR')}`,  color: '#2563eb' },
-                        { label: 'Έξοδα',              value: `€${fin.estimatedCosts.toLocaleString('el-GR')}`,   color: '#d97706' },
-                        { label: 'Κέρδος',             value: `€${fin.estimatedProfit.toLocaleString('el-GR')}`,  color: fin.estimatedProfit >= 0 ? '#059669' : '#dc2626' },
-                        { label: 'Περιθώριο Κέρδους',  value: `${fin.profitMargin}%` },
+                        { label: 'Παραγωγή',         value: `${fin.estimatedYield.toLocaleString('el-GR')} kg` },
+                        { label: 'Ανά Στρέμμα',       value: `${fin.yieldPerAcre} kg` },
+                        { label: 'Έσοδα',             value: `€${fin.estimatedRevenue.toLocaleString('el-GR')}`, color: '#2563eb' },
+                        { label: 'Έξοδα',             value: `€${fin.estimatedCosts.toLocaleString('el-GR')}`,   color: '#d97706' },
+                        { label: 'Κέρδος',            value: `€${fin.estimatedProfit.toLocaleString('el-GR')}`,  color: fin.estimatedProfit >= 0 ? '#059669' : '#dc2626' },
+                        { label: 'Περιθώριο Κέρδους', value: `${fin.profitMargin}%` },
                       ].map(s => (
                         <div key={s.label} className="bg-gray-50 rounded-xl p-3">
                           <div className="text-xs text-gray-500">{s.label}</div>
@@ -555,18 +603,8 @@ export default function FarmerFields() {
                       <p className="text-sm text-gray-600">{viewField.notes || '—'}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="text-gray-500">Σπορά: </span>
-                        <span style={{ fontWeight: 500 }}>
-                          {viewField.plantingDate ? new Date(viewField.plantingDate).toLocaleDateString('el-GR') : '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Συγκομιδή: </span>
-                        <span style={{ fontWeight: 500 }}>
-                          {viewField.expectedHarvestDate ? new Date(viewField.expectedHarvestDate).toLocaleDateString('el-GR') : '—'}
-                        </span>
-                      </div>
+                      <div><span className="text-gray-500">Σπορά:</span> <span style={{ fontWeight: 500 }}>{viewField.plantingDate ? new Date(viewField.plantingDate).toLocaleDateString('el-GR') : '—'}</span></div>
+                      <div><span className="text-gray-500">Συγκομιδή:</span> <span style={{ fontWeight: 500 }}>{viewField.expectedHarvestDate ? new Date(viewField.expectedHarvestDate).toLocaleDateString('el-GR') : '—'}</span></div>
                     </div>
                   </>
                 );
@@ -576,26 +614,42 @@ export default function FarmerFields() {
         </div>
       )}
 
-      {/* Delete Confirm (χωρίς UC9 block check ακόμα — έρχεται στο Commit 13) */}
+      {/* Delete Confirm — UC9 Alt Flow 4: block if pending tasks/recs */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setDeleteConfirm(null); setDeleteBlockMsg(''); }} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-7 h-7 text-red-600" />
-            </div>
-            <h3 className="text-lg mb-2" style={{ fontWeight: 700 }}>Διαγραφή Χωραφιού;</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Είστε σίγουροι ότι θέλετε να διαγράψετε το χωράφι; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm" style={{ fontWeight: 500 }}>
-                Άκυρο
-              </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm" style={{ fontWeight: 600 }}>
-                Διαγραφή
-              </button>
-            </div>
+            {deleteBlockMsg ? (
+              <>
+                {/* UC9 Alt Flow 4: Blocked */}
+                <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-7 h-7 text-amber-600" />
+                </div>
+                <h3 className="text-lg mb-2" style={{ fontWeight: 700 }}>Αδύνατη Διαγραφή</h3>
+                <p className="text-sm text-gray-500 mb-6">{deleteBlockMsg}</p>
+                <button
+                  onClick={() => { setDeleteConfirm(null); setDeleteBlockMsg(''); }}
+                  className="w-full py-2.5 rounded-xl text-white text-sm"
+                  style={{ background: '#d97706', fontWeight: 600 }}
+                >
+                  Κατανοητό
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="text-lg mb-2" style={{ fontWeight: 700 }}>Διαγραφή Χωραφιού;</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Είστε σίγουροι ότι θέλετε να διαγράψετε το χωράφι; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => { setDeleteConfirm(null); setDeleteBlockMsg(''); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm" style={{ fontWeight: 500 }}>Άκυρο</button>
+                  <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm" style={{ fontWeight: 600 }}>Διαγραφή</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
