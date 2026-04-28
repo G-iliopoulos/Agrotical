@@ -1,1 +1,1 @@
-/* Commit 3  — mockData.ts */
+/* Commit 3+18 — mockData.ts (+ getFarmerTotals) */
