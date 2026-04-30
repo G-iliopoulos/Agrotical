@@ -1,1 +1,1 @@
-/* Commit 6/7 — FarmerDashboard */
+/* → Πλήρης κώδικας στο Commit 07 */

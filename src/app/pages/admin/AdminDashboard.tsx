@@ -1,1 +1,1 @@
-/* Commit 6   — AdminDashboard */
+/* → Πλήρης κώδικας στο Commit 06 */

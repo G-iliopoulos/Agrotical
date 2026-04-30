@@ -1,1 +1,1 @@
-/* Commit 5  — Layout.tsx */
+/* → Πλήρης κώδικας στο Commit 05 */

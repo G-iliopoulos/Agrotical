@@ -1,1 +1,1 @@
-/* Commit 17  — FarmerFinancials */
+/* → Πλήρης κώδικας στο Commit 17 */

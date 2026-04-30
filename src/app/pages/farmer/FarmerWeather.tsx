@@ -1,1 +1,1 @@
-/* Commit 17  — FarmerWeather */
+/* → Πλήρης κώδικας στο Commit 17 */
